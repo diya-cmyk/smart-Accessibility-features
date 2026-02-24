@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCR - Smart Accessibility</title>
+
+<!-- OCR LIBRARY -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
+body{background:#0b1220;color:white;text-align:center;}
+
+nav{
+  padding:15px 40px;
+  background:#111827;
+}
+nav h2{color:#60a5fa;}
+
+.hero{
+  margin-top:15px;
+  color:#9ca3af;
+}
+
+video, img{
+  margin:20px auto;
+  width:340px;
+  border-radius:10px;
+  border:2px solid #2563eb;
+  display:block;
+}
+
+.buttons{
+  margin-top:10px;
+}
+
+button{
+  padding:10px 18px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  margin:8px;
+  font-weight:bold;
+}
+
+.primary{background:#2563eb;color:white;}
+.speak{background:#10b981;color:white;}
+.danger{background:#ef4444;color:white;}
+
+#output{
+  margin:20px auto;
+  width:85%;
+  max-width:700px;
+  min-height:120px;
+  background:#1f2937;
+  padding:15px;
+  border-radius:10px;
+  color:#93c5fd;
+  text-align:left;
+  overflow:auto;
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+  <h2>📷 OCR Reader</h2>
+</nav>
+
+<div class="hero">
+  Capture text using camera, upload, or paste from Google.
+</div>
+
+<!-- CAMERA -->
+<video id="video" autoplay></video>
+
+<!-- IMAGE PREVIEW -->
+<img id="preview" style="display:none;">
+
+<div class="buttons">
+  <button class="primary" onclick="startCamera()">Start Camera</button>
+  <button class="primary" onclick="captureText()">Capture</button>
+
+  <!-- Upload -->
+  <input type="file" id="imageUpload" accept="image/*" hidden>
+  <button onclick="document.getElementById('imageUpload').click()">🖼 Upload</button>
+
+  <!-- Paste -->
+  <button onclick="pasteImage()">📋 Paste</button>
+
+  <button class="speak" onclick="speakText()">Speak</button>
+  <button class="danger" onclick="stopCamera()">Stop</button>
+  <button onclick="goBack()">⬅ Back</button>
+</div>
+
+<div id="output">Detected text will appear here...</div>
+
+
+<script>
+let stream = null;
+let lastText = "";
+
+function setOutput(text){
+  lastText = text;
+  document.getElementById("output").innerText = text;
+}
+
+////////////////////////////////////////////////////
+//////////////// START CAMERA //////////////////////
+////////////////////////////////////////////////////
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:true});
+    document.getElementById("video").style.display = "block";
+    document.getElementById("preview").style.display = "none";
+    document.getElementById("video").srcObject = stream;
+    setOutput("Camera started.");
+  }catch(err){
+    setOutput("⚠ Camera permission denied. Allow access from browser.");
+  }
+}
+
+////////////////////////////////////////////////////
+//////////////// STOP CAMERA ///////////////////////
+////////////////////////////////////////////////////
+function stopCamera(){
+  if(stream){
+    stream.getTracks().forEach(track=>track.stop());
+    document.getElementById("video").srcObject = null;
+    setOutput("Camera stopped.");
+  }
+}
+
+////////////////////////////////////////////////////
+//////////////// CAMERA CAPTURE ////////////////////
+////////////////////////////////////////////////////
+function captureText(){
+  if(!stream){
+    alert("Start camera first!");
+    return;
+  }
+
+  const video = document.getElementById("video");
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video,0,0);
+
+  runOCR(canvas);
+}
+
+////////////////////////////////////////////////////
+//////////////// UPLOAD IMAGE //////////////////////
+////////////////////////////////////////////////////
+document.getElementById("imageUpload").addEventListener("change", function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(){
+    const img = document.getElementById("preview");
+    img.src = reader.result;
+    img.style.display = "block";
+    document.getElementById("video").style.display = "none";
+    runOCR(img);
+  };
+  reader.readAsDataURL(file);
+});
+
+////////////////////////////////////////////////////
+//////////////// PASTE IMAGE ///////////////////////
+////////////////////////////////////////////////////
+function pasteImage(){
+  navigator.clipboard.read().then(items=>{
+    for(const item of items){
+      for(const type of item.types){
+        if(type.startsWith("image/")){
+          item.getType(type).then(blob=>{
+            const img = document.getElementById("preview");
+            img.src = URL.createObjectURL(blob);
+            img.style.display = "block";
+            document.getElementById("video").style.display = "none";
+            runOCR(img);
+          });
+        }
+      }
+    }
+  }).catch(()=>{
+    alert("Copy image first from Google.");
+  });
+}
+
+////////////////////////////////////////////////////
+//////////////// OCR FUNCTION //////////////////////
+////////////////////////////////////////////////////
+function runOCR(image){
+  setOutput("Reading text, please wait...");
+
+  Tesseract.recognize(image,'eng')
+  .then(({data:{text}})=>{
+
+    // keep only letters, numbers & basic punctuation
+    let cleaned = text
+      .replace(/[^a-zA-Z0-9.,!?;:'"()\- \n]/g, '')   // remove junk
+      .replace(/\s+/g, ' ')                          // remove extra spaces
+      .trim();
+
+    if(cleaned.length === 0){
+      setOutput("No valid text detected.");
+    }else{
+      setOutput(cleaned);
+    }
+  });
+}
+
+////////////////////////////////////////////////////
+//////////////// TEXT TO SPEECH ////////////////////
+////////////////////////////////////////////////////
+function speakText(){
+  if(!lastText){
+    alert("No text available!");
+    return;
+  }
+  const speech = new SpeechSynthesisUtterance(lastText);
+  window.speechSynthesis.speak(speech);
+}
+
+////////////////////////////////////////////////////
+//////////////// BACK //////////////////////////////
+////////////////////////////////////////////////////
+function goBack(){
+  window.location.href = "/";
+}
+</script>
+
+</body>
+</html>

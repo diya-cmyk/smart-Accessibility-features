@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Smart Assistive Booking</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI;}
+body{
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  color:white;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+header{
+  padding:20px;
+  font-size:22px;
+  font-weight:bold;
+  color:#38bdf8;
+}
+
+.card{
+  width:90%;
+  max-width:800px;
+  margin-top:20px;
+  padding:25px;
+  border-radius:20px;
+  background:rgba(255,255,255,0.08);
+  backdrop-filter:blur(15px);
+}
+
+input, select, textarea{
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  border:none;
+  border-radius:10px;
+  background:#111827;
+  color:white;
+}
+
+textarea{min-height:80px;}
+
+button{
+  padding:10px 20px;
+  margin:8px 5px;
+  border:none;
+  border-radius:25px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.ai{background:#a855f7;color:white;}
+.voice{background:#3b82f6;color:white;}
+.book{background:#22c55e;color:white;}
+.emergency{background:#ef4444;color:white;}
+.history{background:#f59e0b;color:black;}
+.back{background:#64748b;color:white;}
+
+.output{
+  margin-top:15px;
+  padding:15px;
+  background:#1f2937;
+  border-radius:10px;
+}
+
+.history-box{
+  margin-top:15px;
+  padding:10px;
+  background:#0f172a;
+  border-radius:10px;
+  max-height:150px;
+  overflow-y:auto;
+  font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<header>🧠 AI Assistive Booking System</header>
+
+<div class="card">
+
+<input type="text" id="name" placeholder="Your Name">
+
+<select id="service">
+<option value="">Select Service</option>
+<option>Hospital Appointment</option>
+<option>Ambulance</option>
+<option>Accessible Transport</option>
+<option>Sign Language Interpreter</option>
+</select>
+
+<input type="date" id="date">
+<input type="time" id="time">
+
+<textarea id="description" placeholder="Describe your need..."></textarea>
+
+<div>
+<button class="ai" onclick="aiSuggest()">AI Suggest</button>
+<button class="voice" onclick="voiceInput()">Voice Input</button>
+<button class="book" onclick="bookService()">Book</button>
+<button class="emergency" onclick="emergencyMode()">Emergency</button>
+<button class="history" onclick="showHistory()">History</button>
+<button class="back" onclick="goBack()">Back</button>
+<button class="cancel" onclick="stopAll()">Stop</button>
+
+</div>
+
+<div class="output" id="output">
+AI ready to assist your booking.
+</div>
+
+<div class="history-box" id="historyBox"></div>
+
+</div>
+
+<script>
+let recognition;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if(SpeechRecognition){
+recognition = new SpeechRecognition();
+recognition.lang="en-US";
+recognition.onresult=function(event){
+document.getElementById("description").value += 
+" " + event.results[0][0].transcript;
+};
+}
+
+function voiceInput(){
+if(recognition) recognition.start();
+}
+
+/* AI Suggestion */
+function aiSuggest(){
+const desc=document.getElementById("description").value.toLowerCase();
+let suggestion="";
+
+if(desc.includes("pain")||desc.includes("doctor"))
+suggestion="Hospital Appointment";
+else if(desc.includes("urgent")||desc.includes("accident"))
+suggestion="Ambulance";
+else if(desc.includes("travel")||desc.includes("ride"))
+suggestion="Accessible Transport";
+else if(desc.includes("deaf")||desc.includes("sign"))
+suggestion="Sign Language Interpreter";
+
+if(suggestion){
+document.getElementById("service").value=suggestion;
+setOutput("AI suggests: "+suggestion);
+}else{
+setOutput("AI unable to determine service.");
+}
+}
+
+/* Booking with Location Name */
+async function bookService(){
+const name=document.getElementById("name").value;
+const service=document.getElementById("service").value;
+const date=document.getElementById("date").value;
+const time=document.getElementById("time").value;
+
+if(!name||!service||!date||!time){
+alert("Fill required fields.");
+return;
+}
+
+navigator.geolocation.getCurrentPosition(async function(pos){
+
+const lat=pos.coords.latitude;
+const lon=pos.coords.longitude;
+
+/* Reverse Geocoding */
+const response=await fetch(
+`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+);
+const data=await response.json();
+const locationName=data.display_name;
+
+const bookingID="BK"+Math.floor(Math.random()*100000);
+
+const bookingData={
+id:bookingID,
+name,
+service,
+date,
+time,
+status:"Confirmed",
+location:locationName
+};
+
+let history=JSON.parse(localStorage.getItem("bookings"))||[];
+history.push(bookingData);
+localStorage.setItem("bookings",JSON.stringify(history));
+
+displayBooking(bookingData);
+
+speak(`Booking confirmed for ${service} at ${locationName}`);
+
+});
+}
+
+/* Emergency Mode */
+async function emergencyMode(){
+
+navigator.geolocation.getCurrentPosition(async function(pos){
+
+const lat=pos.coords.latitude;
+const lon=pos.coords.longitude;
+
+const response=await fetch(
+`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+);
+const data=await response.json();
+const locationName=data.display_name;
+
+const bookingID="EM"+Math.floor(Math.random()*100000);
+
+const bookingData={
+id:bookingID,
+name:"Emergency User",
+service:"Ambulance",
+date:new Date().toISOString().split('T')[0],
+time:new Date().toLocaleTimeString(),
+status:"Emergency Activated",
+location:locationName
+};
+
+displayBooking(bookingData);
+speak("Emergency ambulance requested at your current location.");
+
+});
+}
+
+/* Display Booking Card */
+function displayBooking(data){
+document.getElementById("output").innerHTML = `
+<div style="padding:20px;background:#0f172a;border-radius:15px;">
+<h3 style="color:#22c55e;">✔ Booking Confirmed</h3>
+<p><strong>Booking ID:</strong> ${data.id}</p>
+<p><strong>Name:</strong> ${data.name}</p>
+<p><strong>Service:</strong> ${data.service}</p>
+<p><strong>Date:</strong> ${data.date}</p>
+<p><strong>Time:</strong> ${data.time}</p>
+<p><strong>Status:</strong> ${data.status}</p>
+<p><strong>Location:</strong> ${data.location}</p>
+</div>
+`;
+}
+
+/* History */
+function showHistory(){
+let history=JSON.parse(localStorage.getItem("bookings"))||[];
+let text="Booking History:\n\n";
+
+history.forEach((b,i)=>{
+text+=`${i+1}. ${b.service} - ${b.date} ${b.time}\n`;
+});
+
+document.getElementById("historyBox").innerText=
+history.length ? text : "No booking history.";
+}
+
+function setOutput(text){
+document.getElementById("output").innerText=text;
+}
+
+function speak(text){
+const speech=new SpeechSynthesisUtterance(text);
+window.speechSynthesis.speak(speech);
+}
+
+function goBack(){
+window.location.href="/";
+}
+function stopAll(){
+
+// Stop Speech Recognition
+if(recognition){
+try{
+recognition.stop();
+}catch(e){}
+}
+
+// Stop Text-to-Speech
+window.speechSynthesis.cancel();
+
+document.getElementById("output").innerText="⏹ Process Stopped by User.";
+}
+
+</script>
+
+</body>
+</html>

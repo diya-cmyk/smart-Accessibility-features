@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Sign Language Detection</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI;
+  background:linear-gradient(135deg,#2e1065,#4c1d95);
+  color:white;
+  text-align:center;
+}
+
+h2{ padding:20px; }
+
+.camera-box{
+  width:360px;
+  height:260px;
+  margin:20px auto;
+  border:3px solid #a78bfa;
+  border-radius:20px;
+  overflow:hidden;
+}
+
+video{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.result-circle{
+  width:140px;
+  height:140px;
+  margin:20px auto;
+  border-radius:50%;
+  background:#0f172a;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:50px;
+  border:4px solid #a78bfa;
+}
+
+button{
+  padding:10px 20px;
+  margin:8px;
+  border:none;
+  border-radius:25px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.start{background:#22c55e;color:white;}
+.speak{background:#a855f7;color:white;}
+.stop{background:#ef4444;color:white;}
+.back{background:#64748b;color:white;}
+
+#confidence{ margin-top:10px; }
+</style>
+</head>
+
+<body>
+
+<h2>🤟 AI Sign Language Detection</h2>
+
+<div class="camera-box">
+  <video id="camera" autoplay></video>
+</div>
+
+<canvas id="captureCanvas" width="360" height="260" style="display:none;"></canvas>
+
+<div class="result-circle" id="result">-</div>
+<div id="confidence">Confidence: --</div>
+
+<div>
+<button class="start" onclick="startCamera()">Start Camera</button>
+<button class="speak" onclick="speakDetected()">Speak</button>
+<button class="stop" onclick="stopAll()">Stop</button>
+<button class="back" onclick="goBack()">Back</button>
+</div>
+
+<script>
+
+let stream;
+let detectedSign="";
+let predictionInterval;
+
+function startCamera(){
+navigator.mediaDevices.getUserMedia({video:true})
+.then(s=>{
+stream=s;
+document.getElementById("camera").srcObject=s;
+
+predictionInterval=setInterval(()=>{
+predictSign();
+},2000);
+
+})
+.catch(()=>{
+alert("Camera access denied.");
+});
+}
+
+async function predictSign(){
+
+const video = document.getElementById("camera");
+const canvas = document.getElementById("captureCanvas");
+const ctx = canvas.getContext("2d");
+
+ctx.drawImage(video,0,0,360,260);
+const imageData = canvas.toDataURL("image/jpeg");
+
+try{
+const response = await fetch("/predict_sign",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({image:imageData})
+});
+
+const data = await response.json();
+
+if(data.prediction){
+detectedSign = data.prediction;
+document.getElementById("result").innerText = detectedSign;
+document.getElementById("confidence").innerText =
+"Confidence: " + data.confidence;
+}
+
+}catch(error){
+console.log("Prediction error:",error);
+}
+
+}
+
+function speakDetected(){
+if(!detectedSign) return;
+const speech=new SpeechSynthesisUtterance(detectedSign);
+window.speechSynthesis.speak(speech);
+}
+
+function stopAll(){
+if(stream){
+stream.getTracks().forEach(track=>track.stop());
+}
+clearInterval(predictionInterval);
+document.getElementById("result").innerText="-";
+document.getElementById("confidence").innerText="Confidence: --";
+}
+
+function goBack(){
+window.location.href="/";
+}
+
+</script>
+</body>
+</html>

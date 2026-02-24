@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Voice Command Console</title>
+
+<style>
+body{
+  background:#000;
+  color:#00ffcc;
+  font-family:Courier New;
+  text-align:center;
+  padding:20px;
+}
+
+h2{
+  border-bottom:1px solid #00ffcc;
+  padding-bottom:10px;
+}
+
+.console{
+  margin:20px auto;
+  width:90%;
+  max-width:800px;
+  height:300px;
+  border:2px solid #00ffcc;
+  border-radius:15px;
+  padding:15px;
+  text-align:left;
+  overflow-y:auto;
+  background:#111;
+}
+
+button{
+  padding:12px 25px;
+  margin:10px;
+  border:none;
+  border-radius:25px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.start{background:#00ffcc;color:black;}
+.stop{background:#ff0044;color:white;}
+.back{background:#777;color:white;}
+
+.status{
+  margin-top:10px;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🎙 AI Voice Command Console</h2>
+
+<div class="console" id="console">
+System: Click Start and speak naturally...
+</div>
+
+<button class="start" onclick="startListening()">Start Listening</button>
+<button class="stop" onclick="stopAll()">Stop</button>
+<button class="back" onclick="goBack()">Back</button>
+
+<div class="status" id="status">
+Microphone idle.
+</div>
+
+<script>
+
+let recognition;
+let isListening = false;
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+
+    recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = function(event) {
+
+        const result = event.results[event.results.length - 1][0];
+        const transcript = result.transcript.toLowerCase().trim();
+        const confidence = result.confidence;
+
+        log(`User: ${transcript} (Confidence: ${confidence.toFixed(2)})`);
+
+        if (confidence < 0.45) {
+            log("System: Low confidence. Please repeat.");
+            return;
+        }
+
+        if (transcript.includes("stop")) {
+            stopAll();
+            return;
+        }
+
+        processCommand(transcript);
+    };
+
+    recognition.onend = function() {
+        if (isListening) {
+            recognition.start();
+        }
+    };
+
+    recognition.onerror = function(event) {
+        log("System Error: " + event.error);
+    };
+
+} else {
+    alert("Speech Recognition not supported. Please use Google Chrome.");
+}
+
+/* START LISTENING */
+function startListening() {
+    if (recognition) {
+        recognition.start();
+        isListening = true;
+        document.getElementById("status").innerText = "Microphone active...";
+        log("System: Listening started.");
+    }
+}
+
+/* STOP */
+function stopAll() {
+    if (recognition) {
+        recognition.stop();
+    }
+    window.speechSynthesis.cancel();
+    isListening = false;
+    document.getElementById("status").innerText = "Microphone stopped.";
+    log("System: Listening stopped.");
+}
+
+/* SMART INTENT-BASED COMMAND SYSTEM */
+function processCommand(text) {
+
+    if (text.includes("sign")) {
+        navigate("/sign", "Opening sign language page");
+        return;
+    }
+
+    if (text.includes("ocr") || text.includes("read") || text.includes("text")) {
+        navigate("/ocr", "Opening OCR page");
+        return;
+    }
+
+    if (text.includes("location") || text.includes("map") || text.includes("where")) {
+        navigate("/location", "Opening location page");
+        return;
+    }
+
+    if (text.includes("booking") || text.includes("appointment") || text.includes("reserve")) {
+        navigate("/booking", "Opening booking page");
+        return;
+    }
+
+    if (text.includes("home") || text.includes("back")) {
+        navigate("/", "Going back to home page");
+        return;
+    }
+
+    if (text.includes("emergency") || text.includes("help")) {
+        navigate("/location", "Emergency mode activated");
+        return;
+    }
+
+    log("System: I understood but no matching action.");
+    speak("I understood you, but I don't know what to open.");
+}
+
+/* NAVIGATION */
+function navigate(page, message) {
+    log("System: " + message);
+    speak(message);
+
+    setTimeout(() => {
+        window.location.href = window.location.origin + page;
+    }, 1000);
+}
+
+/* LOG */
+function log(text) {
+    const consoleDiv = document.getElementById("console");
+    consoleDiv.innerHTML += "<br>" + text;
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+}
+
+/* SPEAK */
+function speak(text) {
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.rate = 1;
+    speech.pitch = 1;
+    window.speechSynthesis.speak(speech);
+}
+
+/* BACK BUTTON */
+function goBack() {
+    window.location.href = window.location.origin + "/";
+}
+
+</script>
+
+</body>
+</html>

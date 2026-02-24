@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Assistive Smart Location</title>
+
+<style>
+body{
+  font-family:Segoe UI;
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  color:white;
+  text-align:center;
+  padding:20px;
+}
+
+.card{
+  margin-top:40px;
+  padding:25px;
+  border-radius:20px;
+  background:rgba(255,255,255,0.08);
+  max-width:700px;
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.output{
+  margin-top:15px;
+  padding:15px;
+  background:#1f2937;
+  border-radius:10px;
+  font-size:15px;
+}
+
+button{
+  padding:12px 20px;
+  margin:10px;
+  border:none;
+  border-radius:30px;
+  cursor:pointer;
+  font-weight:bold;
+  font-size:14px;
+}
+
+.refresh{background:#22c55e;color:white;}
+.speak{background:#3b82f6;color:white;}
+.share{background:#f59e0b;color:black;}
+.emergency{background:#ef4444;color:white;}
+.back{background:#64748b;color:white;}
+
+h2{color:#38bdf8;}
+</style>
+</head>
+
+<body>
+
+<h2>📍 AI Smart Location Tracker</h2>
+
+<div class="card">
+
+<div class="output" id="output">
+Detecting your safe location...
+</div>
+
+<div>
+<button class="refresh" onclick="getLocation()">Refresh</button>
+<button class="speak" onclick="speakLocation()">Speak</button>
+<button class="share" onclick="shareLocation()">Send to Caretaker</button>
+<button class="emergency" onclick="emergencyAlert()">Emergency Alert</button>
+<button class="back" onclick="goBack()">Back</button>
+</div>
+
+</div>
+
+<script>
+
+let currentLocationText="";
+
+/* Get Location */
+function getLocation(){
+
+navigator.geolocation.getCurrentPosition(async function(pos){
+
+const lat=pos.coords.latitude;
+const lon=pos.coords.longitude;
+
+/* Reverse Geocoding */
+const response=await fetch(
+`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+);
+
+const data=await response.json();
+const locationName=data.display_name;
+
+const accuracy=pos.coords.accuracy;
+
+let safetyMessage="";
+
+/* AI Safety Logic */
+if(accuracy > 50){
+safetyMessage="⚠ GPS accuracy is low. Please move to open area.";
+}else{
+safetyMessage="✔ Location detected accurately.";
+}
+
+currentLocationText=`📍 Your Current Location:
+${locationName}
+
+Accuracy: ${accuracy.toFixed(2)} meters
+${safetyMessage}`;
+
+document.getElementById("output").innerText=currentLocationText;
+
+});
+
+}
+
+/* Speak */
+function speakLocation(){
+if(currentLocationText){
+const speech=new SpeechSynthesisUtterance(currentLocationText);
+window.speechSynthesis.speak(speech);
+}
+}
+
+/* Share Location */
+function shareLocation(){
+
+if(!currentLocationText){
+alert("Location not detected yet.");
+return;
+}
+
+/* WhatsApp Share */
+const message=encodeURIComponent(currentLocationText);
+window.open(`https://wa.me/?text=${message}`);
+
+}
+
+/* Emergency Alert */
+function emergencyAlert(){
+
+if(!currentLocationText){
+alert("Location not detected yet.");
+return;
+}
+
+const alertMessage=`🚨 EMERGENCY ALERT 🚨
+
+User needs assistance.
+
+${currentLocationText}`;
+
+const encoded=encodeURIComponent(alertMessage);
+window.open(`https://wa.me/?text=${encoded}`);
+
+}
+
+/* Back */
+function goBack(){
+window.location.href="/";
+}
+
+/* Auto load */
+getLocation();
+
+</script>
+
+</body>
+</html>

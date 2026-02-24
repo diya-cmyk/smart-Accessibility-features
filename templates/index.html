@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Accessibility</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial;}
+body{background:#0b1220;color:white;}
+
+nav{
+  display:flex;
+  justify-content:space-between;
+  padding:15px 40px;
+  background:#111827;
+}
+nav h2{color:#60a5fa;}
+
+.hero{text-align:center;padding:50px 20px;}
+
+.features{
+  padding:40px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:20px;
+}
+
+.card{
+  background:#1f2937;
+  padding:25px;
+  border-radius:12px;
+  text-align:center;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.card:hover{
+  background:#2563eb;
+  transform:translateY(-5px);
+}
+
+.icon{font-size:38px;}
+
+.result{
+  margin:20px;
+  text-align:center;
+  color:#93c5fd;
+}
+</style>
+</head>
+
+
+<body>
+
+<nav>
+  <h2>Smart Accessibility</h2>
+</nav>
+
+<section class="hero">
+  <h1>AI Powered Accessibility</h1>
+  <p>Helping users with voice, vision and communication support.</p>
+</section>
+
+<section class="features">
+
+  <div class="card" onclick="openVoice()">
+    <div class="icon">🎙</div>
+    <h3>Voice</h3>
+  </div>
+
+  <div class="card" onclick="openOCR()">
+    <div class="icon">📷</div>
+    <h3>OCR</h3>
+  </div>
+
+  <div class="card" onclick="openSign()">
+    <div class="icon">🤟</div>
+    <h3>Sign</h3>
+  </div>
+
+  <div class="card" onclick="openLocation()">
+    <div class="icon">📍</div>
+    <h3>Location</h3>
+  </div>
+
+  
+
+  <!-- NEW BOOKING CARD -->
+  <div class="card" onclick="openBooking()">
+    <div class="icon">📅</div>
+    <h3>Booking</h3>
+  </div>
+
+</section>
+
+<div id="output" class="result">
+  Select a feature to start.
+</div>
+
+
+<script>
+////////////////////////////////////////////////////
+//////////////// PAGE NAVIGATION ///////////////////
+///////////////////////////////////////////////////
+function openVoice(){
+  window.location.href = "/voice";
+}
+
+function openOCR(){
+  window.location.href = "/ocr";
+}
+
+function openSign(){
+  window.location.href = "/sign";
+}
+
+function openLocation(){
+  window.location.href = "/location";
+}
+
+function openBooking(){
+  window.location.href = "/booking";
+}
+</script>
+
+
+
+</body>
+</html>
