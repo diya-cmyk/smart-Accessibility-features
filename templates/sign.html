@@ -1,158 +1,925 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>AI Sign Language Detection</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASL Sign Language A-Z 0-9</title>
 <style>
-body{
-  margin:0;
-  font-family:Segoe UI;
-  background:linear-gradient(135deg,#2e1065,#4c1d95);
-  color:white;
-  text-align:center;
-}
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;700&display=swap');
 
-h2{ padding:20px; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-.camera-box{
-  width:360px;
-  height:260px;
-  margin:20px auto;
-  border:3px solid #a78bfa;
-  border-radius:20px;
-  overflow:hidden;
-}
+  body {
+    background: #000;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
 
-video{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
+  header {
+    width: 100%;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #0ff2;
+    background: #000;
+    position: sticky; top: 0; z-index: 100;
+  }
 
-.result-circle{
-  width:140px;
-  height:140px;
-  margin:20px auto;
-  border-radius:50%;
-  background:#0f172a;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:50px;
-  border:4px solid #a78bfa;
-}
+  .logo-dot {
+    width: 9px; height: 9px;
+    background: #0ff;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #0ff;
+    animation: pulse 2s infinite;
+  }
 
-button{
-  padding:10px 20px;
-  margin:8px;
-  border:none;
-  border-radius:25px;
-  cursor:pointer;
-  font-weight:bold;
-}
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.4; transform:scale(0.7); }
+  }
 
-.start{background:#22c55e;color:white;}
-.speak{background:#a855f7;color:white;}
-.stop{background:#ef4444;color:white;}
-.back{background:#64748b;color:white;}
+  header h1 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    color: #0ff;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
 
-#confidence{ margin-top:10px; }
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+    gap: 20px;
+    width: 100%;
+    max-width: 980px;
+  }
+
+  .top-row {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ── Camera ── */
+  .cam-wrapper {
+    position: relative;
+    width: 560px;
+    max-width: 100%;
+    aspect-ratio: 4/3;
+    border: 1px solid #0ff3;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 0 40px #0ff1;
+    flex-shrink: 0;
+  }
+
+  .corner { position: absolute; width: 18px; height: 18px; z-index: 10; pointer-events: none; }
+  .corner.tl { top:8px; left:8px; border-top:2px solid #0ff; border-left:2px solid #0ff; }
+  .corner.tr { top:8px; right:8px; border-top:2px solid #0ff; border-right:2px solid #0ff; }
+  .corner.bl { bottom:8px; left:8px; border-bottom:2px solid #0ff; border-left:2px solid #0ff; }
+  .corner.br { bottom:8px; right:8px; border-bottom:2px solid #0ff; border-right:2px solid #0ff; }
+
+  .scan-line {
+    position: absolute; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, #0ff8, transparent);
+    top:0; animation: scandown 2.5s linear infinite;
+    pointer-events: none; z-index: 5;
+  }
+  @keyframes scandown { 0%{top:0%} 100%{top:100%} }
+
+  video {
+    position: absolute; top:0; left:0;
+    width:100%; height:100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    opacity: 0.12;
+  }
+
+  canvas {
+    position: absolute; top:0; left:0;
+    width:100%; height:100%;
+  }
+
+  .loading-overlay {
+    position: absolute; inset:0;
+    background: #000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px; z-index:20;
+    font-family: 'Share Tech Mono', monospace;
+    color: #0ff; font-size: 0.8rem; letter-spacing: 2px;
+  }
+  .loading-spinner {
+    width:36px; height:36px;
+    border: 2px solid #0ff2; border-top-color: #0ff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Result Panel ── */
+  .result-panel {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-self: stretch;
+    justify-content: flex-start;
+  }
+
+  .big-letter {
+    border: 1px solid #0ff4;
+    border-radius: 4px;
+    background: #2d7e97;
+    padding: 20px;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .big-letter .letter {
+    font-size: 6rem;
+    color: #0ff;
+    text-shadow: 0 0 30px #0ff9;
+    line-height: 1;
+    min-height: 6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .big-letter .label {
+    font-size: 0.7rem;
+    color: #444;
+    letter-spacing: 2px;
+    margin-top: 8px;
+  }
+
+  .confidence-bar {
+    height: 3px;
+    background: #0ff1;
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .confidence-fill {
+    height: 100%;
+    background: rgb(184, 221, 221);
+    box-shadow: 0 0 6px rgb(16, 16, 16);
+    transition: width 0.2s;
+    width: 0%;
+  }
+
+  .category-badge {
+    font-size: 0.65rem;
+    color: #888;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .history-box {
+    border: 1px solid #0ff2;
+    border-radius: 4px;
+    padding: 14px;
+    font-family: 'Share Tech Mono', monospace;
+    flex: 1;
+  }
+
+  .history-box h3 {
+    font-size: 0.65rem;
+    color: #555;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+
+  .history-text {
+    font-size: 1.4rem;
+    color: #0ff;
+    letter-spacing: 4px;
+    word-break: break-all;
+    min-height: 2rem;
+    text-shadow: 0 0 8px #0ff4;
+  }
+
+  .history-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    border: 1px solid #0ff2;
+    border-radius: 4px;
+    background: #295c70;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+  }
+
+  .status-left { color: #0ff; }
+  .status-right { color: #29c4d5; }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  }
+
+  button {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    padding: 9px 20px;
+    border: 1px solid #0ff4;
+    background: transparent;
+    color: #0ff;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  button:hover { background: #0ff1; border-color: #0ff; box-shadow: 0 0 10px #0ff3; }
+  button:disabled { opacity: 0.3; cursor: not-allowed; }
+  button.danger { border-color: #f004; color: #f88; }
+  button.danger:hover { background: #f001; border-color: #f44; }
+
+  /* ── Reference Grid ── */
+  .ref-section {
+    width: 100%;
+  }
+
+  .ref-section h2 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: #444;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .ref-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 6px;
+  }
+
+  .ref-cell {
+    border: 1px solid #0ff1;
+    border-radius: 3px;
+    padding: 6px 4px;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: #555;
+    transition: all 0.15s;
+    cursor: default;
+  }
+
+  .ref-cell .ref-char {
+    font-size: 1.1rem;
+    display: block;
+    color: #333;
+    transition: all 0.15s;
+  }
+
+  .ref-cell.active {
+    border-color: #0ff;
+    background: #0ff1;
+    color: #0ff;
+    box-shadow: 0 0 10px #0ff4;
+  }
+
+  .ref-cell.active .ref-char {
+    color: #0ff;
+    text-shadow: 0 0 8px #0ff;
+  }
+
+  /* hold indicator */
+  .hold-ring {
+    position: absolute;
+    bottom: 12px; right: 12px;
+    width: 36px; height: 36px;
+    z-index: 15;
+    pointer-events: none;
+  }
 </style>
 </head>
-
 <body>
 
-<h2>🤟 AI Sign Language Detection</h2>
+<header>
+  <div class="logo-dot"></div>
+  <h1>Smart Accessibility // ASL Detector — A–Z &amp; 0–9</h1>
+</header>
 
-<div class="camera-box">
-  <video id="camera" autoplay></video>
+<div class="main">
+
+  <div class="top-row">
+
+    <!-- Camera -->
+    <div class="cam-wrapper" id="camWrapper">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="scan-line"></div>
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <span id="loadingText">PRESS START</span>
+      </div>
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <!-- hold ring SVG -->
+      <svg class="hold-ring" id="holdRing" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="15" fill="none" stroke="#0ff2" stroke-width="2"/>
+        <circle id="holdArc" cx="18" cy="18" r="15" fill="none" stroke="#0ff" stroke-width="2"
+          stroke-dasharray="94.2" stroke-dashoffset="94.2"
+          stroke-linecap="round" transform="rotate(-90 18 18)"
+          style="transition:stroke-dashoffset 0.1s"/>
+      </svg>
+    </div>
+
+    <!-- Result panel -->
+    <div class="result-panel">
+      <div class="big-letter">
+        <div class="letter" id="bigLetter">—</div>
+        <div class="confidence-bar"><div class="confidence-fill" id="confFill"></div></div>
+        <div class="category-badge" id="catBadge">WAITING FOR HAND</div>
+        <div class="label">DETECTED SIGN</div>
+      </div>
+
+      <div class="history-box">
+        <h3>// TYPED SEQUENCE</h3>
+        <div class="history-text" id="historyText">&nbsp;</div>
+        <div class="history-controls">
+          <button onclick="addSpace()">SPACE</button>
+          <button onclick="deleteLast()" class="danger">← DEL</button>
+          <button onclick="clearHistory()" class="danger">CLEAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar" style="max-width:760px; width:100%">
+    <span class="status-left" id="statusLeft">● IDLE</span>
+    <span class="status-right" id="statusRight">HANDS: 0 | FPS: -- | HOLD: 0%</span>
+  </div>
+
+  <!-- Camera controls -->
+  <div class="controls">
+    <button id="startBtn" onclick="startCamera()">▶ START CAMERA</button>
+    <button id="stopBtn" onclick="stopCamera()" disabled>■ STOP</button>
+  </div>
+
+  <!-- Reference grid A-Z 0-9 -->
+  <div class="ref-section">
+    <h2>// REFERENCE — ASL ALPHABET &amp; NUMBERS</h2>
+    <div class="ref-grid" id="refGrid"></div>
+  </div>
+
 </div>
 
-<canvas id="captureCanvas" width="360" height="260" style="display:none;"></canvas>
-
-<div class="result-circle" id="result">-</div>
-<div id="confidence">Confidence: --</div>
-
-<div>
-<button class="start" onclick="startCamera()">Start Camera</button>
-<button class="speak" onclick="speakDetected()">Speak</button>
-<button class="stop" onclick="stopAll()">Stop</button>
-<button class="back" onclick="goBack()">Back</button>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
 
 <script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  DOM
+// ─────────────────────────────────────────────────────────────────────────────
+const video       = document.getElementById('video');
+const canvas      = document.getElementById('canvas');
+const ctx         = canvas.getContext('2d');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const loadingText = document.getElementById('loadingText');
+const statusLeft  = document.getElementById('statusLeft');
+const statusRight = document.getElementById('statusRight');
+const bigLetter   = document.getElementById('bigLetter');
+const confFill    = document.getElementById('confFill');
+const catBadge    = document.getElementById('catBadge');
+const historyText = document.getElementById('historyText');
+const holdArc     = document.getElementById('holdArc');
+const refGrid     = document.getElementById('refGrid');
 
-let stream;
-let detectedSign="";
-let predictionInterval;
+// ─────────────────────────────────────────────────────────────────────────────
+//  Skeleton connections (MediaPipe Hands 21 landmarks)
+// ─────────────────────────────────────────────────────────────────────────────
+const CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],       // thumb
+  [0,5],[5,6],[6,7],[7,8],       // index
+  [0,9],[9,10],[10,11],[11,12],  // middle
+  [0,13],[13,14],[14,15],[15,16],// ring
+  [0,17],[17,18],[18,19],[19,20],// pinky
+  [5,9],[9,13],[13,17],[0,17]    // palm
+];
 
-function startCamera(){
-navigator.mediaDevices.getUserMedia({video:true})
-.then(s=>{
-stream=s;
-document.getElementById("camera").srcObject=s;
+// ─────────────────────────────────────────────────────────────────────────────
+//  Draw skeleton — lines only, no dots
+// ─────────────────────────────────────────────────────────────────────────────
+function drawSkeleton(lms, W, H) {
+  const pts = lms.map(lm => ({ x: (1 - lm.x) * W, y: lm.y * H }));
+  const C = '#00ffff', G = 'rgba(0,255,255,0.25)';
 
-predictionInterval=setInterval(()=>{
-predictSign();
-},2000);
+  // glow
+  ctx.save();
+  ctx.strokeStyle = G; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const [a,b] of CONNECTIONS) {
+    ctx.beginPath(); ctx.moveTo(pts[a].x,pts[a].y); ctx.lineTo(pts[b].x,pts[b].y); ctx.stroke();
+  }
+  // crisp lines
+  ctx.strokeStyle = C; ctx.lineWidth = 1.8;
+  ctx.shadowColor = C; ctx.shadowBlur = 8;
+  for (const [a,b] of CONNECTIONS) {
+    ctx.beginPath(); ctx.moveTo(pts[a].x,pts[a].y); ctx.lineTo(pts[b].x,pts[b].y); ctx.stroke();
+  }
+  // fingertip squares
+  ctx.fillStyle = C; ctx.shadowBlur = 12;
+  for (const t of [4,8,12,16,20]) ctx.fillRect(pts[t].x-3,pts[t].y-3,6,6);
+  ctx.restore();
+}
 
-})
-.catch(()=>{
-alert("Camera access denied.");
+// ─────────────────────────────────────────────────────────────────────────────
+//  Geometry helpers
+// ─────────────────────────────────────────────────────────────────────────────
+// tip ids:  thumb=4, index=8, middle=12, ring=16, pinky=20
+// pip ids:  thumb=3, index=6, middle=10, ring=14, pinky=18
+// mcp ids:  index=5, middle=9, ring=13, pinky=17
+
+function tipY(L,f)  { return L[f].y; }
+function pipY(L,f)  { return L[f-2].y; }
+function mcpY(L,f)  { return L[f-3].y; }
+
+// Is finger extended upward?
+function ext(L, tip, pip) { return L[tip].y < L[pip].y - 0.01; }
+// Is finger curled (tip below mcp)?
+function curl(L, tip, mcp) { return L[tip].y > L[mcp].y + 0.01; }
+// Thumb: compare x (mirrored cam, so left/right flipped)
+function thumbExt(L) { return L[4].x > L[3].x + 0.02; }  // extended outward (right hand mirrored)
+function thumbCurl(L){ return L[4].x < L[3].x - 0.01; }
+
+function dist(a,b) {
+  const dx=a.x-b.x, dy=a.y-b.y;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+
+function allCurled(L) {
+  return curl(L,8,5) && curl(L,12,9) && curl(L,16,13) && curl(L,20,17);
+}
+
+// Finger bent halfway (not fully extended, not fully curled) — used for D, G, H etc.
+function halfExt(L, tip, pip, mcp) {
+  return L[tip].y < L[mcp].y && L[tip].y > L[pip].y;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ASL ALPHABET + NUMBERS — rule-based, no dataset
+//  Each rule returns a confidence 0-1 based on how many conditions match
+// ─────────────────────────────────────────────────────────────────────────────
+function recognizeSign(L) {
+  const T  = thumbExt(L);
+  const TC = thumbCurl(L);
+  const I  = ext(L,8,6);
+  const M  = ext(L,12,10);
+  const R  = ext(L,16,14);
+  const P  = ext(L,20,18);
+  const IC = curl(L,8,5);
+  const MC = curl(L,12,9);
+  const RC = curl(L,16,13);
+  const PC = curl(L,20,17);
+
+  // tip-to-tip distances (normalized)
+  const thumbTip = L[4]; const indexTip = L[8];
+  const midTip   = L[12]; const ringTip  = L[16]; const pinkyTip = L[20];
+  const wrist    = L[0];
+  const W = 1; // relative — all coords 0-1
+
+  const di_t = dist(thumbTip, indexTip);
+  const dm_t = dist(thumbTip, midTip);
+  const dr_t = dist(thumbTip, ringTip);
+  const dp_t = dist(thumbTip, pinkyTip);
+  const di_m = dist(indexTip, midTip);
+
+  const checks = [];
+
+  // ── NUMBERS ──────────────────────────────────────────────────────────────
+  // 0: all fingers curved, thumb touches index tip
+  checks.push(['0', 'NUMBER',
+    (!I && !M && !R && !P && di_t < 0.12),
+    (!I && !M && !R && !P ? 0.5 : 0) + (di_t < 0.12 ? 0.5 : 0)
+  ]);
+
+  // 1: index up, all others curled, thumb curled
+  checks.push(['1', 'NUMBER',
+    (I && !M && !R && !P && TC),
+    (I?0.4:0) + (!M?0.15:0) + (!R?0.15:0) + (!P?0.15:0) + (TC?0.15:0)
+  ]);
+
+  // 2: index + middle up, others curled (peace/V)
+  checks.push(['2', 'NUMBER',
+    (I && M && !R && !P),
+    (I?0.35:0) + (M?0.35:0) + (!R?0.15:0) + (!P?0.15:0)
+  ]);
+
+  // 3: thumb + index + middle extended
+  checks.push(['3', 'NUMBER',
+    (T && I && M && !R && !P),
+    (T?0.25:0) + (I?0.25:0) + (M?0.25:0) + (!R?0.125:0) + (!P?0.125:0)
+  ]);
+
+  // 4: index+middle+ring+pinky extended, thumb curled
+  checks.push(['4', 'NUMBER',
+    (I && M && R && P && TC),
+    (I?0.2:0) + (M?0.2:0) + (R?0.2:0) + (P?0.2:0) + (TC?0.2:0)
+  ]);
+
+  // 5: all extended including thumb
+  checks.push(['5', 'NUMBER',
+    (T && I && M && R && P),
+    (T?0.2:0) + (I?0.2:0) + (M?0.2:0) + (R?0.2:0) + (P?0.2:0)
+  ]);
+
+  // 6: pinky + thumb touching, others extended
+  checks.push(['6', 'NUMBER',
+    (I && M && R && !P && dp_t < 0.12),
+    (I?0.2:0) + (M?0.2:0) + (R?0.2:0) + (!P?0.1:0) + (dp_t<0.12?0.3:0)
+  ]);
+
+  // 7: ring + thumb touching, others extended
+  checks.push(['7', 'NUMBER',
+    (I && M && !R && P && dr_t < 0.13),
+    (I?0.2:0) + (M?0.2:0) + (!R?0.1:0) + (P?0.2:0) + (dr_t<0.13?0.3:0)
+  ]);
+
+  // 8: middle + thumb touching, index + ring + pinky extended
+  checks.push(['8', 'NUMBER',
+    (I && !M && R && P && dm_t < 0.12),
+    (I?0.2:0) + (!M?0.1:0) + (R?0.15:0) + (P?0.15:0) + (dm_t<0.12?0.4:0)
+  ]);
+
+  // 9: index + thumb touching (circle), others extended
+  checks.push(['9', 'NUMBER',
+    (!I && M && R && P && di_t < 0.10),
+    (!I?0.1:0) + (M?0.2:0) + (R?0.2:0) + (P?0.2:0) + (di_t<0.10?0.3:0)
+  ]);
+
+  // ── ALPHABET ─────────────────────────────────────────────────────────────
+  // A: fist with thumb to side
+  checks.push(['A', 'LETTER',
+    (IC && MC && RC && PC && T),
+    (IC?0.2:0) + (MC?0.2:0) + (RC?0.2:0) + (PC?0.2:0) + (T?0.2:0)
+  ]);
+
+  // B: four fingers up, thumb across palm (curled inside)
+  checks.push(['B', 'LETTER',
+    (I && M && R && P && TC),
+    (I?0.2:0) + (M?0.2:0) + (R?0.2:0) + (P?0.2:0) + (TC?0.2:0)
+  ]);
+  // (B and 4 share shape — will resolve by order, B has lower priority)
+
+  // C: curved hand, all fingers bent same direction (open C)
+  const cShape = !I && !M && !R && !P && !TC && di_t > 0.1 && di_t < 0.22;
+  checks.push(['C', 'LETTER', cShape,
+    (cShape ? 0.7 : 0) + (!I?0.075:0) + (!M?0.075:0) + (!R?0.075:0) + (!P?0.075:0)
+  ]);
+
+  // D: index up, middle+ring+pinky curved, thumb touches middle/ring
+  const dShape = I && !M && !R && !P && dm_t < 0.15;
+  checks.push(['D', 'LETTER', dShape,
+    (I?0.3:0) + (!M?0.2:0) + (!R?0.1:0) + (!P?0.1:0) + (dm_t<0.15?0.3:0)
+  ]);
+
+  // E: all fingers bent (hooked), thumb tucked under
+  const eShape = !I && !M && !R && !P && TC && di_t < 0.15;
+  checks.push(['E', 'LETTER', eShape,
+    (!I?0.2:0) + (!M?0.2:0) + (!R?0.2:0) + (!P?0.2:0) + (TC?0.1:0) + (di_t<0.15?0.1:0)
+  ]);
+
+  // F: index+thumb make circle, others extended
+  checks.push(['F', 'LETTER',
+    (di_t < 0.10 && M && R && P && !I),
+    (di_t<0.10?0.4:0) + (!I?0.1:0) + (M?0.2:0) + (R?0.15:0) + (P?0.15:0)
+  ]);
+
+  // G: index + thumb pointing horizontally (index extended, others curled)
+  const gShape = I && !M && !R && !P && T && L[8].y > L[5].y - 0.05;
+  checks.push(['G', 'LETTER', gShape,
+    (I?0.3:0) + (!M?0.2:0) + (!R?0.2:0) + (!P?0.2:0) + (gShape?0.1:0)
+  ]);
+
+  // H: index + middle extended horizontally side by side, others curled
+  const hShape = I && M && !R && !P && di_m < 0.12;
+  checks.push(['H', 'LETTER', hShape,
+    (I?0.25:0) + (M?0.25:0) + (!R?0.2:0) + (!P?0.2:0) + (di_m<0.12?0.1:0)
+  ]);
+
+  // I: pinky only up
+  checks.push(['I', 'LETTER',
+    (!I && !M && !R && P && TC),
+    (!I?0.2:0) + (!M?0.2:0) + (!R?0.2:0) + (P?0.3:0) + (TC?0.1:0)
+  ]);
+
+  // J: pinky up + movement (we detect static J = I shape, note in label)
+  checks.push(['J', 'LETTER',
+    (!I && !M && !R && P && TC),
+    (!I?0.15:0) + (!M?0.15:0) + (!R?0.15:0) + (P?0.25:0) + (TC?0.1:0)
+  ]);
+  // I and J share static shape — keep I higher priority, J lower
+
+  // K: index + middle up (V), thumb between them
+  const kShape = I && M && !R && !P && T && di_m < 0.15;
+  checks.push(['K', 'LETTER', kShape,
+    (I?0.2:0) + (M?0.2:0) + (!R?0.15:0) + (!P?0.15:0) + (T?0.2:0) + (di_m<0.15?0.1:0)
+  ]);
+
+  // L: index up + thumb out (L shape), others curled
+  checks.push(['L', 'LETTER',
+    (I && !M && !R && !P && T),
+    (I?0.3:0) + (!M?0.2:0) + (!R?0.15:0) + (!P?0.15:0) + (T?0.2:0)
+  ]);
+
+  // M: three fingers over thumb (fist-like, thumb tucked)
+  const mShape = !I && !M && !R && !P && TC && L[8].y > L[5].y;
+  checks.push(['M', 'LETTER', mShape,
+    (!I?0.25:0) + (!M?0.25:0) + (!R?0.2:0) + (!P?0.1:0) + (TC?0.1:0) + (mShape?0.1:0)
+  ]);
+
+  // N: index + middle over thumb (fist-like)
+  const nShape = !I && !M && !R && !P && TC && L[8].y > L[6].y;
+  checks.push(['N', 'LETTER', nShape,
+    (!I?0.25:0) + (!M?0.25:0) + (!R?0.2:0) + (!P?0.1:0) + (TC?0.1:0) + (nShape?0.1:0)
+  ]);
+
+  // O: all fingers curved to thumb (round O shape)
+  const oShape = di_t < 0.12 && !I && !M && !R && !P;
+  checks.push(['O', 'LETTER', oShape,
+    (di_t<0.12?0.5:0) + (!I?0.125:0) + (!M?0.125:0) + (!R?0.125:0) + (!P?0.125:0)
+  ]);
+
+  // P: index points down, thumb + middle form circle
+  const pShape = I && !M && !R && !P && dm_t < 0.14 && L[8].y > L[5].y + 0.05;
+  checks.push(['P', 'LETTER', pShape,
+    (pShape?0.5:0) + (I?0.2:0) + (!M?0.1:0) + (dm_t<0.14?0.2:0)
+  ]);
+
+  // Q: thumb + index pointing downward, others curled
+  const qShape = I && !M && !R && !P && T && L[8].y > L[5].y && di_t < 0.15;
+  checks.push(['Q', 'LETTER', qShape,
+    (qShape?0.5:0) + (I?0.2:0) + (!M?0.1:0) + (!R?0.1:0) + (!P?0.1:0)
+  ]);
+
+  // R: index + middle crossed (close together)
+  const rShape = I && M && !R && !P && TC && di_m < 0.07;
+  checks.push(['R', 'LETTER', rShape,
+    (I?0.25:0) + (M?0.25:0) + (!R?0.15:0) + (!P?0.15:0) + (di_m<0.07?0.2:0)
+  ]);
+
+  // S: fist with thumb over fingers
+  const sShape = IC && MC && RC && PC && !T && !TC;
+  checks.push(['S', 'LETTER', sShape,
+    (IC?0.2:0) + (MC?0.2:0) + (RC?0.2:0) + (PC?0.2:0) + (!T?0.2:0)
+  ]);
+
+  // T: thumb between index and middle (fist variant)
+  const tShape = !I && !M && !R && !P && !T && di_t < 0.13;
+  checks.push(['T', 'LETTER', tShape,
+    (!I?0.2:0) + (!M?0.2:0) + (!R?0.2:0) + (!P?0.2:0) + (di_t<0.13?0.2:0)
+  ]);
+
+  // U: index + middle up, together, thumb curled
+  const uShape = I && M && !R && !P && TC && di_m < 0.09;
+  checks.push(['U', 'LETTER', uShape,
+    (I?0.25:0) + (M?0.25:0) + (!R?0.15:0) + (!P?0.15:0) + (TC?0.1:0) + (di_m<0.09?0.1:0)
+  ]);
+
+  // V: index + middle up, spread apart, others curled
+  const vShape = I && M && !R && !P && TC && di_m > 0.08;
+  checks.push(['V', 'LETTER', vShape,
+    (I?0.25:0) + (M?0.25:0) + (!R?0.15:0) + (!P?0.15:0) + (TC?0.1:0) + (di_m>0.08?0.1:0)
+  ]);
+
+  // W: index + middle + ring up, pinky curled
+  checks.push(['W', 'LETTER',
+    (I && M && R && !P && TC),
+    (I?0.25:0) + (M?0.25:0) + (R?0.25:0) + (!P?0.15:0) + (TC?0.1:0)
+  ]);
+
+  // X: index finger hooked (bent at pip, not fully extended)
+  const xShape = !I && !M && !R && !P && TC && L[8].x < L[5].x + 0.05 && L[8].y < L[5].y;
+  checks.push(['X', 'LETTER', xShape,
+    (!M?0.2:0) + (!R?0.2:0) + (!P?0.2:0) + (TC?0.2:0) + (xShape?0.2:0)
+  ]);
+
+  // Y: thumb + pinky extended, others curled
+  checks.push(['Y', 'LETTER',
+    (T && !I && !M && !R && P),
+    (T?0.3:0) + (!I?0.15:0) + (!M?0.15:0) + (!R?0.15:0) + (P?0.25:0)
+  ]);
+
+  // Z: index pointing, moved (static = index only up pointing outward)
+  const zShape = I && !M && !R && !P && !T && !TC;
+  checks.push(['Z', 'LETTER', zShape,
+    (I?0.35:0) + (!M?0.2:0) + (!R?0.2:0) + (!P?0.2:0) + (!T?0.05:0)
+  ]);
+
+  // ── Resolve: pick highest confidence ─────────────────────────────────────
+  let best = null, bestConf = 0;
+  for (const [char, cat, match, conf] of checks) {
+    if (conf > bestConf) { bestConf = conf; best = { char, cat, conf }; }
+  }
+
+  if (!best || bestConf < 0.45) return { char: '?', cat: 'UNKNOWN', conf: bestConf || 0 };
+  return best;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────────────────────────────────────
+let camera=null, handsModel=null, stream=null;
+let frameCount=0, lastFpsT=performance.now(), fps=0;
+let typedHistory = '';
+let lastChar = null, holdFrames = 0;
+const HOLD_THRESHOLD = 22; // frames held before auto-type
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Build reference grid
+// ─────────────────────────────────────────────────────────────────────────────
+const ALL_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+ALL_CHARS.forEach(c => {
+  const cell = document.createElement('div');
+  cell.className = 'ref-cell';
+  cell.id = 'ref-' + c;
+  cell.innerHTML = `<span class="ref-char">${c}</span>`;
+  refGrid.appendChild(cell);
 });
+
+function highlightRef(c) {
+  ALL_CHARS.forEach(ch => {
+    const el = document.getElementById('ref-' + ch);
+    if (el) el.classList.toggle('active', ch === c);
+  });
 }
 
-async function predictSign(){
+// ─────────────────────────────────────────────────────────────────────────────
+//  MediaPipe callback
+// ─────────────────────────────────────────────────────────────────────────────
+function onResults(results) {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
 
-const video = document.getElementById("camera");
-const canvas = document.getElementById("captureCanvas");
-const ctx = canvas.getContext("2d");
+  let handsCount = 0;
+  let result = { char: '—', cat: 'WAITING', conf: 0 };
 
-ctx.drawImage(video,0,0,360,260);
-const imageData = canvas.toDataURL("image/jpeg");
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    handsCount = results.multiHandLandmarks.length;
+    const lms = results.multiHandLandmarks[0];
+    drawSkeleton(lms, W, H);
+    result = recognizeSign(lms);
 
-try{
-const response = await fetch("/predict_sign",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({image:imageData})
-});
+    // Hold logic — auto-type on stable hold
+    if (result.char === lastChar && result.char !== '?' && result.char !== '—') {
+      holdFrames = Math.min(holdFrames + 1, HOLD_THRESHOLD);
+    } else {
+      holdFrames = 0;
+      lastChar = result.char;
+    }
 
-const data = await response.json();
+    if (holdFrames >= HOLD_THRESHOLD) {
+      typedHistory += result.char;
+      historyText.textContent = typedHistory || '\u00A0';
+      holdFrames = 0;
+    }
 
-if(data.prediction){
-detectedSign = data.prediction;
-document.getElementById("result").innerText = detectedSign;
-document.getElementById("confidence").innerText =
-"Confidence: " + data.confidence;
+    // hold ring
+    const pct = holdFrames / HOLD_THRESHOLD;
+    const circ = 94.2;
+    holdArc.style.strokeDashoffset = circ - pct * circ;
+    holdArc.style.opacity = 1;
+
+    statusLeft.textContent = '● TRACKING';
+    statusLeft.style.color = '#0f0';
+  } else {
+    holdFrames = 0;
+    holdArc.style.strokeDashoffset = 94.2;
+    holdArc.style.opacity = 0.2;
+    lastChar = null;
+    statusLeft.textContent = '● SCANNING';
+    statusLeft.style.color = '#0ff';
+  }
+
+  // Update UI
+  bigLetter.textContent = result.char;
+  confFill.style.width = (result.conf * 100).toFixed(0) + '%';
+  catBadge.textContent = result.cat === 'WAITING'
+    ? 'SHOW YOUR HAND'
+    : `${result.cat} · ${(result.conf*100).toFixed(0)}% CONFIDENCE`;
+
+  if (result.char !== '—' && result.char !== '?') highlightRef(result.char);
+  else highlightRef(null);
+
+  // FPS
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsT > 1000) {
+    fps = Math.round(frameCount * 1000 / (now - lastFpsT));
+    frameCount = 0; lastFpsT = now;
+  }
+  statusRight.textContent = `HANDS: ${handsCount} | FPS: ${fps} | HOLD: ${Math.round((holdFrames/HOLD_THRESHOLD)*100)}%`;
 }
 
-}catch(error){
-console.log("Prediction error:",error);
+// ─────────────────────────────────────────────────────────────────────────────
+//  Camera start / stop
+// ─────────────────────────────────────────────────────────────────────────────
+async function startCamera() {
+  document.getElementById('startBtn').disabled = true;
+  loadingOverlay.style.display = 'flex';
+  loadingText.textContent = 'LOADING MEDIAPIPE...';
+
+  try {
+    handsModel = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`
+    });
+    handsModel.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.72,
+      minTrackingConfidence: 0.65
+    });
+    handsModel.onResults(onResults);
+
+    loadingText.textContent = 'OPENING CAMERA...';
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 1280, height: 960, facingMode: 'user' }
+    });
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    video.play();
+
+    const resizeCanvas = () => {
+      const rect = document.getElementById('camWrapper').getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    loadingText.textContent = 'CALIBRATING...';
+
+    camera = new Camera(video, {
+      onFrame: async () => { if (handsModel) await handsModel.send({ image: video }); },
+      width: 1280, height: 960
+    });
+    await camera.start();
+
+    loadingOverlay.style.display = 'none';
+    document.getElementById('stopBtn').disabled = false;
+  } catch(err) {
+    loadingText.textContent = 'ERROR: ' + err.message;
+    document.getElementById('startBtn').disabled = false;
+  }
 }
 
+function stopCamera() {
+  if (camera) { camera.stop(); camera = null; }
+  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream = null; }
+  if (handsModel) { handsModel.close(); handsModel = null; }
+  video.srcObject = null;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  bigLetter.textContent = '—';
+  confFill.style.width = '0%';
+  catBadge.textContent = 'WAITING FOR HAND';
+  holdArc.style.strokeDashoffset = 94.2;
+  statusLeft.textContent = '● IDLE';
+  statusLeft.style.color = '#888';
+  statusRight.textContent = 'HANDS: 0 | FPS: -- | HOLD: 0%';
+  loadingOverlay.style.display = 'flex';
+  loadingText.textContent = 'PRESS START';
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  highlightRef(null);
 }
 
-function speakDetected(){
-if(!detectedSign) return;
-const speech=new SpeechSynthesisUtterance(detectedSign);
-window.speechSynthesis.speak(speech);
-}
-
-function stopAll(){
-if(stream){
-stream.getTracks().forEach(track=>track.stop());
-}
-clearInterval(predictionInterval);
-document.getElementById("result").innerText="-";
-document.getElementById("confidence").innerText="Confidence: --";
-}
-
-function goBack(){
-window.location.href="/";
-}
-
+// ─────────────────────────────────────────────────────────────────────────────
+//  Typing helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function addSpace()    { typedHistory += ' '; historyText.textContent = typedHistory || '\u00A0'; }
+function deleteLast()  { typedHistory = typedHistory.slice(0,-1); historyText.textContent = typedHistory || '\u00A0'; }
+function clearHistory(){ typedHistory = ''; historyText.textContent = '\u00A0'; }
 </script>
 </body>
 </html>
